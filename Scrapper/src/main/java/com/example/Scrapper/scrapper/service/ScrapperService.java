@@ -25,47 +25,51 @@ public class ScrapperService{
     @Value("#{'${urls}'.split(',')}")
     String baseUrl;
 
-
-
     public void extractDataFromToScrape(){
         ScrapperRequestDTO data;
         try {
             String url = "https://books.toscrape.com/catalogue/";
-            Document baseDocument = Jsoup.connect(baseUrl).get();
             Document document = Jsoup.connect(baseUrl).get();
-                Elements books = document.select(".product_pod");
-                System.out.println(baseUrl);
-                for (Element bk:books){
-                    String title = bk.select("h3 > a[href][title]").attr("title");
-                    String price = bk.select(".price_color").text();
-                    String link = bk.getElementsByTag("a").first().attr("href");
-                    data = new ScrapperRequestDTO(title, Double.parseDouble(price.substring(1)), baseUrl + link);
-                    saveOrUpdateBook(data);
-				}
-			Elements nextElements = baseDocument.select(".next");
-			Element nextElement = nextElements.first();
-			String relativeUrl = nextElement.getElementsByTag("a").first().attr("href");
-			
-			while (!nextElements.isEmpty()) {
-				String completeUrl = baseUrl + relativeUrl;
-				document = Jsoup.connect(completeUrl).get();
-				books = document.select(".product_pod");
-				for (Element bk:books){
-					String title = bk.select("h3 > a[href][title]").attr("title");
-					String price = bk.select(".price_color").text();
-					String link = bk.getElementsByTag("a").first().attr("href");
-                    data = new ScrapperRequestDTO(title, Double.parseDouble(price.substring(1)), baseUrl + link);
-                    saveOrUpdateBook(data);
-				}
-				baseUrl = url;
-				nextElements = document.select(".next");
-				nextElement = nextElements.first();
-				relativeUrl = nextElement.getElementsByTag("a").first().attr("href");
+            Elements books = document.select(".product_pod");
+            System.out.println(baseUrl);
+            for (Element bk:books){
+                String title = bk.select("h3 > a[href][title]").attr("title");
+                String price = bk.select(".price_color").text();
+                String link = bk.getElementsByTag("a").first().attr("href");
+                data = new ScrapperRequestDTO(title, Double.parseDouble(price.substring(1)), baseUrl + link);
+                saveOrUpdateBook(data);
+            }
+			Elements nextElements = document.select(".next");
+            Element nextElement = nextElements.first();
+
+            // Verifica se há uma próxima página antes de continuar
+            if (nextElement != null) {
+                Element nextAnchor = nextElement.getElementsByTag("a").first();
+                if (nextAnchor != null) {
+                    String relativeUrl = nextAnchor.attr("href");
+                    while (!nextElements.isEmpty()) {
+                        String completeUrl = baseUrl + relativeUrl;
+                        document = Jsoup.connect(completeUrl).get();
+                        books = document.select(".product_pod");
+                        for (Element bk : books) {
+                            String title = bk.select("h3 > a[href][title]").attr("title");
+                            String price = bk.select(".price_color").text();
+                            String link = bk.getElementsByTag("a").first().attr("href");
+                            data = new ScrapperRequestDTO(title, Double.parseDouble(price.substring(1)), baseUrl + link);
+                            saveOrUpdateBook(data);
+                        }
+                        nextElements = document.select(".next");
+                        nextElement = nextElements.first();
+                        if (nextElement == null) break; // Sai do loop se não houver próxima página
+                        nextAnchor = nextElement.getElementsByTag("a").first();
+                        if (nextAnchor == null) break;
+                        relativeUrl = nextAnchor.attr("href");
+                    }
+                }
             }
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}	
     }
 
